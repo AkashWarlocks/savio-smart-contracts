@@ -383,6 +383,54 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     }
 
     /**
+     * @dev Return original collateral to members after ROSCA is complete
+     * Can only be called when all rounds are finished
+     * Each member gets back their original collateral amount
+     */
+    function returnCollateral() internal {
+        require(!isActive, "Group must be complete");
+        require(currentRound > period, "All rounds must be finished");
+
+        uint256 collateralPerMember = period * pledgeAmount; // 300 USDC per member
+
+        for (uint256 i = 0; i < memberCount; i++) {
+            address member = members[i];
+
+            // Return original collateral to each member
+            require(
+                usdcToken.transfer(member, collateralPerMember),
+                "Collateral transfer failed"
+            );
+
+            emit CollateralReturned(member, collateralPerMember);
+        }
+    }
+
+    //////////////////////
+    // View functions //
+    //////////////////////
+    /**
+     * @dev Get current round number
+     */
+    function getCurrentRound() external view returns (uint256) {
+        return currentRound;
+    }
+
+    /**
+     * @dev Get pledge amount per period
+     */
+    function getPledgeAmount() external view returns (uint256) {
+        return pledgeAmount;
+    }
+
+    /**
+     * @dev Get total number of rounds (periods)
+     */
+    function getTotalRounds() external view returns (uint256) {
+        return period;
+    }
+
+    /**
      * @dev Get eligible members for random selection (those who haven't won yet)
      */
     function getEligibleMembers() public view returns (address[] memory) {
@@ -432,30 +480,6 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
         address member
     ) external view returns (uint256) {
         return memberContribution[member];
-    }
-
-    /**
-     * @dev Return original collateral to members after ROSCA is complete
-     * Can only be called when all rounds are finished
-     * Each member gets back their original collateral amount
-     */
-    function returnCollateral() internal {
-        require(!isActive, "Group must be complete");
-        require(currentRound > period, "All rounds must be finished");
-
-        uint256 collateralPerMember = period * pledgeAmount; // 300 USDC per member
-
-        for (uint256 i = 0; i < memberCount; i++) {
-            address member = members[i];
-
-            // Return original collateral to each member
-            require(
-                usdcToken.transfer(member, collateralPerMember),
-                "Collateral transfer failed"
-            );
-
-            emit CollateralReturned(member, collateralPerMember);
-        }
     }
 
     /**

@@ -11,6 +11,7 @@ import "../src/mocks/MockUSDC.sol";
 contract HelperConfig is Script {
     struct NetworkConfig {
         address entryPoint;
+        address layerZeroEndpoint;
         string name;
         address usdcAddress;
     }
@@ -22,6 +23,7 @@ contract HelperConfig is Script {
             // Sepolia
             activeNetworkConfig = NetworkConfig({
                 entryPoint: 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789,
+                layerZeroEndpoint: 0x6EDCE65403992e310A62460808c4b910D972f10f, // Sepolia EndpointV2
                 name: "Sepolia",
                 usdcAddress: 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf
             });
@@ -29,6 +31,7 @@ contract HelperConfig is Script {
             // Amoy (Polygon Mumbai)
             activeNetworkConfig = NetworkConfig({
                 entryPoint: 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789,
+                layerZeroEndpoint: 0xf69186dfBa60DdB133E91E9A4B5673624293d8F8, // Mumbai EndpointV2
                 name: "Amoy",
                 usdcAddress: 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf
             });
@@ -36,6 +39,7 @@ contract HelperConfig is Script {
             // Arbitrum Sepolia
             activeNetworkConfig = NetworkConfig({
                 entryPoint: 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789,
+                layerZeroEndpoint: 0x6aB5Ae6822647046626e83ee6dB8187151E1d5ab, // Arbitrum Sepolia EndpointV2
                 name: "Arbitrum Sepolia",
                 usdcAddress: 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf
             });
@@ -43,6 +47,7 @@ contract HelperConfig is Script {
             // Base Sepolia
             activeNetworkConfig = NetworkConfig({
                 entryPoint: 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789,
+                layerZeroEndpoint: 0x6EDCE65403992e310A62460808c4b910D972f10f, // Base Sepolia EndpointV2
                 name: "Base Sepolia",
                 usdcAddress: 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf
             });
@@ -51,6 +56,7 @@ contract HelperConfig is Script {
             MockUSDC mockUSDC = new MockUSDC();
             activeNetworkConfig = NetworkConfig({
                 entryPoint: 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789,
+                layerZeroEndpoint: 0x6EDCE65403992e310A62460808c4b910D972f10f, // Default to Sepolia for testing
                 name: "Anvil",
                 usdcAddress: address(mockUSDC)
             });
@@ -63,6 +69,14 @@ contract HelperConfig is Script {
      */
     function getEntryPoint() public view returns (address) {
         return activeNetworkConfig.entryPoint;
+    }
+
+    /**
+     * @notice Get the LayerZero endpoint address for the current network
+     * @return The LayerZero endpoint address
+     */
+    function getLayerZeroEndpoint() public view returns (address) {
+        return activeNetworkConfig.layerZeroEndpoint;
     }
 
     /**

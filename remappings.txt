@@ -1,9 +1,6 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
-@layerzero-labs/solidity-examples/=lib/solidity-examples/
-@layerzero-v2/oapp/=lib/layerzero-v2/packages/layerzero-v2/evm/oapp/contracts/oapp/
-@layerzero-v2/protocol/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol/contracts/
-@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol/
-@layerzerolabs/lz-evm-oapp-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/oapp/
+@layerzerolabs/oapp-evm/=lib/devtools/packages/oapp-evm/
+@layerzerolabs/lz-evm-protocol-v2/=lib/layerzero-v2/packages/layerzero-v2/evm/protocol
 @account-abstraction/contracts/=lib/account-abstraction/contracts/
 @chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/
 forge-std/=lib/forge-std/src/ 
