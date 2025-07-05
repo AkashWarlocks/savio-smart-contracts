@@ -1,0 +1,33 @@
+# Load environment variables from .env file
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+build:
+	@echo "Building contracts..."
+	forge build
+
+clean:
+	@echo "Cleaning build artifacts..."
+	forge clean
+
+deploy-sepolia:
+	@echo "Deploying to Sepolia"
+	forge script script/DeploySavioSmartAccount.s.sol:DeploySavioSmartAccount --rpc-url $SEPOLIA_RPC_URL --broadcast
+
+deploy-savio-sepolia:
+	@echo "Deploying Savio Protocol to Sepolia"
+	forge script script/DeploySavio.s.sol:DeploySavio --rpc-url $SEPOLIA_RPC_URL --accounts dev --broadcast
+
+deploy-savio-sepolia-verify:
+	@echo "Deploying and verifying Savio Protocol on Sepolia"
+	forge script script/DeploySavio.s.sol:DeploySavio --rpc-url $SEPOLIA_RPC_URL --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+
+deploy-rosca-local:
+	@echo "Deploying ROSCA locally with mocks"
+	forge script script/DeployROSCALocal.s.sol:DeployROSCALocal --broadcast
+
+test-rosca:
+	@echo "Running ROSCA tests"
+	forge test --match-contract ROSCAProtocolTest -vvv
