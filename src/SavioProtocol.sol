@@ -9,7 +9,7 @@ import "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.s
 
 /**
  * @title SavioProtocol
- * @dev Rotating Savings and Credit Association (ROSCA) protocol contract
+ * @dev Savings protocol contract
  */
 contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     // Chainlink VRF variables
@@ -19,7 +19,7 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant CALLBACK_GAS_LIMIT = 100000;
 
-    // ROSCA parameters
+    // Protocol parameters
     uint256 public immutable period;
     uint256 public immutable totalMembers;
     uint256 public immutable pledgeAmount;
@@ -47,6 +47,8 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     mapping(uint256 => mapping(address => bool)) public hasContributed;
     mapping(uint256 => address) public roundWinner;
     mapping(uint256 => uint256) public roundTotalContribution;
+    mapping(uint256 => uint256) public roundBidAmount;
+    mapping(uint256 => mapping(address => bool)) public hasClaimedBidShare;
 
     // Events
     event GroupCreated(
@@ -70,6 +72,12 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     );
     event RandomWinnerSelected(uint256 indexed round, address indexed winner);
     event WithdrawalMade(address indexed winner, uint256 amount, uint256 round);
+    event BidShareClaimed(
+        address indexed member,
+        uint256 amount,
+        uint256 round
+    );
+    event CollateralReturned(address indexed member, uint256 amount);
 
     // Errors
     error GroupFull();
@@ -77,6 +85,7 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     error NotMember();
     error GroupNotActive();
     error InsufficientCollateral();
+    error InsufficientAmount();
     error AlreadyContributed();
     error RoundNotComplete();
     error NoBids();
@@ -155,35 +164,37 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
 
     /**
      * @dev Contribute to current round
-     * @param bidAmount Optional bid amount (0 for no bid)
+     * @param amount Total amount to contribute (must be >= pledgeAmount)
      */
-    function contribute(uint256 bidAmount) external nonReentrant {
+    function contribute(uint256 amount) external nonReentrant {
         if (!isActive) revert GroupNotActive();
         if (!isMember[msg.sender]) revert NotMember();
         if (hasContributed[currentRound][msg.sender])
             revert AlreadyContributed();
-        if (hasWon[msg.sender] && currentRound > 1) revert AlreadyWon();
+        if (amount < pledgeAmount) revert InsufficientAmount();
 
-        // Transfer pledge amount
+        // Transfer the total amount
         require(
-            usdcToken.transferFrom(msg.sender, address(this), pledgeAmount),
+            usdcToken.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
         );
 
         // Mark as contributed
         hasContributed[currentRound][msg.sender] = true;
-        memberContribution[msg.sender] += pledgeAmount;
-        roundTotalContribution[currentRound] += pledgeAmount;
-        totalContributed += pledgeAmount;
+        memberContribution[msg.sender] += amount;
+        roundTotalContribution[currentRound] += amount;
+        totalContributed += amount;
 
-        emit ContributionMade(msg.sender, pledgeAmount, currentRound);
+        emit ContributionMade(msg.sender, amount, currentRound);
 
-        // Handle bidding
-        if (bidAmount > 0) {
+        // Handle bidding - if amount > pledgeAmount, the excess is considered a bid
+        if (amount > pledgeAmount) {
+            uint256 bidAmount = amount - pledgeAmount;
             if (bidAmount <= highestBid) revert InvalidBid();
 
             highestBid = bidAmount;
             highestBidder = msg.sender;
+            roundBidAmount[currentRound] += bidAmount;
 
             emit BidPlaced(msg.sender, bidAmount, currentRound);
         }
@@ -198,21 +209,50 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
      * @dev Complete the current round
      */
     function completeRound() internal {
+        address winner;
+
         if (highestBidder != address(0)) {
             // Highest bidder wins
-            roundWinner[currentRound] = highestBidder;
-            hasWon[highestBidder] = true;
+            winner = highestBidder;
+            roundWinner[currentRound] = winner;
+            hasWon[winner] = true;
+
+            // Distribute bid amount among losers (excluding previous winners)
+            if (roundBidAmount[currentRound] > 0) {
+                distributeBidAmount(currentRound);
+            }
 
             emit RoundCompleted(
                 currentRound,
-                highestBidder,
+                winner,
                 roundTotalContribution[currentRound]
             );
-        } else {
-            // No bids, use Chainlink VRF for random selection
-            requestRandomWinner();
-            return;
+        } else if (highestBidder == address(0)) {
+            // No bids, check if this is the last round with only one eligible member
+            address[] memory eligibleMembers = getEligibleMembers();
+
+            if (eligibleMembers.length == 1) {
+                // Only one eligible member left, they win automatically
+                winner = eligibleMembers[0];
+                roundWinner[currentRound] = winner;
+                hasWon[winner] = true;
+
+                emit RoundCompleted(
+                    currentRound,
+                    winner,
+                    roundTotalContribution[currentRound]
+                );
+            } else {
+                // Multiple eligible members, use Chainlink VRF for random selection
+                requestRandomWinner();
+                return;
+            }
         }
+
+        // Automatically transfer winnings to winner
+        uint256 amount = pledgeAmount * totalMembers;
+        require(usdcToken.transfer(winner, amount), "Transfer failed");
+        emit WithdrawalMade(winner, amount, currentRound);
 
         // Reset for next round
         resetRound();
@@ -264,8 +304,61 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
             roundTotalContribution[currentRound]
         );
 
+        // Automatically transfer winnings to winner
+        uint256 amount = pledgeAmount * totalMembers;
+        require(usdcToken.transfer(winner, amount), "Transfer failed");
+        emit WithdrawalMade(winner, amount, currentRound);
+
         // Reset for next round
         resetRound();
+    }
+
+    /**
+     * @dev Distribute bid amount among losers (excluding previous winners)
+     * @param round The round number
+     */
+    function distributeBidAmount(uint256 round) internal {
+        uint256 totalBidAmount = roundBidAmount[round];
+        uint256 protocolFee = (totalBidAmount * 20) / 100; // 20% protocol fee
+        uint256 distributionAmount = totalBidAmount - protocolFee;
+
+        // Count eligible losers (those who haven't won yet and contributed to this round)
+        uint256 eligibleLosersCount = 0;
+        for (uint256 i = 0; i < memberCount; i++) {
+            address member = members[i];
+            if (
+                !hasWon[member] &&
+                hasContributed[round][member] &&
+                member != roundWinner[round]
+            ) {
+                eligibleLosersCount++;
+            }
+        }
+
+        // If no eligible losers, protocol keeps the entire bid amount
+        if (eligibleLosersCount == 0) {
+            return;
+        }
+
+        // Calculate share per eligible loser
+        uint256 sharePerLoser = distributionAmount / eligibleLosersCount;
+
+        // Distribute to eligible losers
+        for (uint256 i = 0; i < memberCount; i++) {
+            address member = members[i];
+            if (
+                !hasWon[member] &&
+                hasContributed[round][member] &&
+                member != roundWinner[round]
+            ) {
+                // Transfer share to member
+                require(
+                    usdcToken.transfer(member, sharePerLoser),
+                    "Transfer failed"
+                );
+                emit BidShareClaimed(member, sharePerLoser, round);
+            }
+        }
     }
 
     /**
@@ -282,26 +375,11 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
 
         currentRound++;
 
-        // Check if ROSCA is complete
+        // Check if Group is complete
         if (currentRound > period) {
             isActive = false;
+            returnCollateral();
         }
-    }
-
-    /**
-     * @dev Withdraw winnings for a specific round
-     * @param round Round number to withdraw from
-     */
-    function withdraw(uint256 round) external nonReentrant {
-        if (roundWinner[round] != msg.sender) revert NoWinnerSelected();
-        if (round > currentRound) revert RoundNotComplete();
-
-        uint256 amount = roundTotalContribution[round];
-        roundTotalContribution[round] = 0; // Prevent double withdrawal
-
-        require(usdcToken.transfer(msg.sender, amount), "Transfer failed");
-
-        emit WithdrawalMade(msg.sender, amount, round);
     }
 
     /**
@@ -354,6 +432,30 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
         address member
     ) external view returns (uint256) {
         return memberContribution[member];
+    }
+
+    /**
+     * @dev Return original collateral to members after ROSCA is complete
+     * Can only be called when all rounds are finished
+     * Each member gets back their original collateral amount
+     */
+    function returnCollateral() internal {
+        require(!isActive, "Group must be complete");
+        require(currentRound > period, "All rounds must be finished");
+
+        uint256 collateralPerMember = period * pledgeAmount; // 300 USDC per member
+
+        for (uint256 i = 0; i < memberCount; i++) {
+            address member = members[i];
+
+            // Return original collateral to each member
+            require(
+                usdcToken.transfer(member, collateralPerMember),
+                "Collateral transfer failed"
+            );
+
+            emit CollateralReturned(member, collateralPerMember);
+        }
     }
 
     /**

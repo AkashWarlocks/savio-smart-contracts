@@ -24,10 +24,22 @@ deploy-savio-sepolia-verify:
 	@echo "Deploying and verifying Savio Protocol on Sepolia"
 	forge script script/DeploySavio.s.sol:DeploySavio --rpc-url $SEPOLIA_RPC_URL --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
-deploy-rosca-local:
-	@echo "Deploying ROSCA locally with mocks"
-	forge script script/DeployROSCALocal.s.sol:DeployROSCALocal --broadcast
+verify-factory-sepolia:
+	@echo "Verifying Savio Factory on Sepolia"
+	forge verify-contract 0xD9a2425E376Bcf5b07F78487c93d745d4D6aD3d4 src/SavioProtocolFactory.sol:SavioProtocolFactory --chain-id 11155111 --etherscan-api-key $ETHERSCAN_API_KEY --constructor-args $(cast abi-encode "constructor(address,bytes32,uint64)" 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae 1)
 
-test-rosca:
-	@echo "Running ROSCA tests"
-	forge test --match-contract ROSCAProtocolTest -vvv
+verify-protocol-sepolia:
+	@echo "Verifying Savio Protocol on Sepolia"
+	forge verify-contract 0xbE5e83e2ac2Cfc86523CfDC48Cf2E06577e5Fc3b src/SavioProtocol.sol:SavioProtocol --chain-id 11155111 --etherscan-api-key $ETHERSCAN_API_KEY --constructor-args $(cast abi-encode "constructor(uint256,uint256,uint256,address,address,bytes32,uint64)" 12 5 100000000 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae 1)
+
+verify-factory-base-sepolia:
+	@echo "Verifying Savio Factory on Base Sepolia"
+	forge verify-contract 0xDd8A066480909b71E7Cc58Ea53C91Af01132a722 src/SavioProtocolFactory.sol:SavioProtocolFactory --chain-id 84532 --etherscan-api-key $ETHERSCAN_API_KEY --constructor-args $(cast abi-encode "constructor(address,bytes32,uint64)" 0x0000000000000000000000000000000000000123 0x0000000000000000000000000000000000000000000000000000000000000000 1)
+
+verify-protocol-base-sepolia:
+	@echo "Verifying Savio Protocol on Base Sepolia"
+	forge verify-contract 0x58EfA16f1A14681f9E1EBaD762b293D8aF4148f0 src/SavioProtocol.sol:SavioProtocol --chain-id 84532 --etherscan-api-key $ETHERSCAN_API_KEY --constructor-args $(cast abi-encode "constructor(uint256,uint256,uint256,address,address,bytes32,uint64)" 12 5 100000000 0x50Ae5Ea38514bD561F6a60Ea9c48807452bb5Ccf 0x0000000000000000000000000000000000000123 0x0000000000000000000000000000000000000000000000000000000000000000 1)
+
+verify-smart-account-factory-base-sepolia:
+	@echo "Verifying Smart Account Factory on Base Sepolia"
+	forge verify-contract 0x4f4F876aad33e4e5F109A1412D09438FD233Cc77 src/SavioSmartAccountFactory.sol:SavioSmartAccountFactory --chain-id 84532 --etherscan-api-key $ETHERSCAN_API_KEY --constructor-args $(cast abi-encode "constructor(address)" 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789)
