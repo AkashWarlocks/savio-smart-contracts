@@ -412,21 +412,21 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     /**
      * @dev Get current round number
      */
-    function getCurrentRound() external view returns (uint256) {
+    function getCurrentRound() public view returns (uint256) {
         return currentRound;
     }
 
     /**
      * @dev Get pledge amount per period
      */
-    function getPledgeAmount() external view returns (uint256) {
+    function getPledgeAmount() public view returns (uint256) {
         return pledgeAmount;
     }
 
     /**
      * @dev Get total number of rounds (periods)
      */
-    function getTotalRounds() external view returns (uint256) {
+    function getTotalRounds() public view returns (uint256) {
         return period;
     }
 
@@ -469,7 +469,7 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
     /**
      * @dev Get all members
      */
-    function getAllMembers() external view returns (address[] memory) {
+    function getAllMembers() public view returns (address[] memory) {
         return members;
     }
 
@@ -478,7 +478,7 @@ contract SavioProtocol is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
      */
     function getMemberContribution(
         address member
-    ) external view returns (uint256) {
+    ) public view returns (uint256) {
         return memberContribution[member];
     }
 
