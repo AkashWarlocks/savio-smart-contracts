@@ -2,20 +2,17 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@evm-cctp-contracts/contracts/interfaces/IMessageTransmitter.sol";
-import "@evm-cctp-contracts/contracts/interfaces/ITokenMinter.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@evm-cctp-contracts/interfaces/IMessageTransmitter.sol";
+import "@evm-cctp-contracts/interfaces/ITokenMinter.sol";
 
 /**
  * @title SavioProtocolCCTP
  * @dev Cross-chain saving protocol using Circle's CCTP for cross-chain interactions
  */
 contract SavioProtocolCCTP is ReentrancyGuard, Ownable, Pausable {
-    using Counters for Counters.Counter;
-
     // CCTP interfaces
     ITokenMinter public tokenMinter;
     IMessageTransmitter public messageTransmitter;
@@ -55,7 +52,7 @@ contract SavioProtocolCCTP is ReentrancyGuard, Ownable, Pausable {
     }
 
     // State variables
-    Counters.Counter private _groupIdCounter;
+    uint256 private _groupIdCounter;
     mapping(uint256 => Saving) public savings;
     mapping(address => uint256[]) public userGroups;
     mapping(bytes32 => bool) public processedMessages;
@@ -151,8 +148,8 @@ contract SavioProtocolCCTP is ReentrancyGuard, Ownable, Pausable {
         require(totalMembers > 1, "Must have at least 2 members");
         require(pledgeAmount > 0, "Pledge amount must be greater than 0");
 
-        groupId = _groupIdCounter.current();
-        _groupIdCounter.increment();
+        groupId = _groupIdCounter;
+        _groupIdCounter++;
 
         Saving storage saving = savings[groupId];
         saving.groupId = groupId;
