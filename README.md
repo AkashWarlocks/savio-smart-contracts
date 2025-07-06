@@ -1,5 +1,8 @@
 # Savio Protocol
 
+frontend [link] https://github.com/andiz2/savio-fe
+savio-layer-zero [link] https://github.com/AkashWarlocks/savio-smart-contracts
+
 A cross-chain saving protocol that enables users to create collaborative saving groups with smart account wallets and seamless cross-chain USDC transfers using Circle's Cross-Chain Transfer Protocol (CCTP).
 
 ## 🚀 Features
